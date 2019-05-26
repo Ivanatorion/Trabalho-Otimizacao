@@ -230,14 +230,26 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
   int nItr = (int) (log2(limitTemperature/temperature) / log2(decay) + 1); //Numero de vezes que a temperatura vai cair
   int count = 0;
 
+  time_t start = time(0);
+  time_t finish;
+  struct tm *tinfo;
+
   FILE *fp = fopen(fileName, "w");
   printf("\nRodando Simulated Annealing com:\nTemperatura inicial: %.2f\nEsfriamento: %.2f\nVizinhos a cada Temperatura: %d\n\n", temperature, decay, nVizinhos);
   while(temperature > limitTemperature){
 
     count++;
     printf("Temperature: %.2f\nSolution Value: %d\n", temperature, valueOfSolution(n, m, d, S, P, M));
-    printf("Iteracao: %d/%d\n\n", count,nItr);
+    printf("Iteracao: %d/%d\n", count,nItr);
     fprintf(fp, "%d, %d\n", count, valueOfSolution(n, m, d, S, P, M));
+
+    if(count > 1){
+      finish = ((time(0) - start) * nItr) / (count-1) + start;
+      tinfo = localtime(&finish);
+
+      printf("EFT: %02d/%02d/%02d - %02d:%02d:%02d\n", tinfo->tm_mday, tinfo->tm_mon + 1, tinfo->tm_year + 1900, tinfo->tm_hour, tinfo->tm_min, tinfo->tm_sec);
+    }
+    printf("\n");
 
     for(int i = 0; i < nVizinhos; i++){
       Sl = S;
@@ -279,6 +291,10 @@ void saveSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<
   fprintf(fp, "Value: %d\n", valueOfSolution(n, m, d, S, P, M));
 
   fclose(fp);
+}
+
+int vmax(int a, int b){
+  return (a > b) ? a : b;
 }
 
 int main(int argc, char* argv[]){
@@ -323,7 +339,7 @@ int main(int argc, char* argv[]){
   strcpy(strstr(nomeArq, "."), ".csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/10.0, 0.9, 10, nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/10.0, 0.9, vmax(n/10, 20), nomeArq);
 
   //Informa o valor da nova solucao
   printf("\nNovo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
