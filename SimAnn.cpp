@@ -4,10 +4,14 @@
 #include <cstdlib>
 #include <ctime>
 #include <math.h>
+#include <errno.h>
 
 #define EULER 2.7182819
 
 using namespace std;
+
+vector<int> randomOrder;
+vector<int> randomOrder2;
 
 int intFromString(char str[]){
   int resultado = 0, i;
@@ -160,18 +164,14 @@ bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &
 
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
 //Pode demorar um tempo consideravel, pois nem todo vizinho eh valido...
-bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M){
-  int sol = rand()%n;
+bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M, double* delta){
+  int sol;
   bool cantPlace;
 
   int p1, p2, aux;
   int j;
 
-  vector<int> randomOrder;
-  for(int i = 0; i < m; i++)
-    randomOrder.push_back(i);
-
-  for(int i = 0; i < m*100; i++){
+  for(int i = 0; i < m*20; i++){
     p1 = rand()%m;
     p2 = rand()%m;
 
@@ -180,24 +180,40 @@ bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P
     randomOrder[p2] = aux;
   }
 
-  for(int j1 = 0; j1 < m; j1++){
-    j = randomOrder[j1];
+  for(int i = 0; i < n*20; i++){
+    p1 = rand()%n;
+    p2 = rand()%n;
+
+    aux = randomOrder2[p1];
+    randomOrder2[p1] = randomOrder2[p2];
+    randomOrder2[p2] = aux;
+  }
+
+  for(int sol1 = 0; sol1 < n; sol1++){
+    sol = randomOrder2[sol1];
     for(int newStart = d - P[sol]; newStart >= 0; newStart--){
-      cantPlace = false;
-      for(int x = 0; x < n; x++){
-        if(M[j*n + x]){
-          if(!(S[x] + P[x] <= newStart || newStart + P[sol] <= S[x]))
-            cantPlace = true;
+      for(int j1 = 0; j1 < m; j1++){
+        j = randomOrder[j1];
+
+        cantPlace = false;
+        for(int x = 0; x < n; x++){
+          if(M[j*n + x]){
+            if(!(S[x] + P[x] <= newStart || newStart + P[sol] <= S[x]))
+              cantPlace = true;
+          }
         }
-      }
-      if(!cantPlace){
-        S[sol] = newStart;
+        if(!cantPlace){
+          *delta = S[sol] - newStart;
 
-        for(int z = 0; z < m; z++)
-          M[z*n + sol] = false;
+          S[sol] = newStart;
 
-        M[j*n + sol] = true;
-        return true;
+          for(int z = 0; z < m; z++)
+            M[z*n + sol] = false;
+
+          M[j*n + sol] = true;
+
+          return true;
+        }
       }
     }
   }
@@ -229,19 +245,22 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
 
   int nItr = (int) (log2(limitTemperature/temperature) / log2(decay) + 1); //Numero de vezes que a temperatura vai cair
   int count = 0;
+  int valueOfSol;
 
   time_t start = time(0);
   time_t finish;
   struct tm *tinfo;
 
   FILE *fp = fopen(fileName, "w");
+
   printf("\nRodando Simulated Annealing com:\nTemperatura inicial: %.2f\nEsfriamento: %.2f\nVizinhos a cada Temperatura: %d\n\n", temperature, decay, nVizinhos);
   while(temperature > limitTemperature){
 
     count++;
-    printf("Temperature: %.2f\nSolution Value: %d\n", temperature, valueOfSolution(n, m, d, S, P, M));
+    valueOfSol = valueOfSolution(n, m, d, S, P, M);
+    printf("Temperature: %.2f\nSolution Value: %d\n", temperature, valueOfSol);
     printf("Iteracao: %d/%d\n", count,nItr);
-    fprintf(fp, "%d, %d\n", count, valueOfSolution(n, m, d, S, P, M));
+    fprintf(fp, "%d, %d\n", count, valueOfSol);
 
     if(count > 1){
       finish = ((time(0) - start) * nItr) / (count-1) + start;
@@ -254,8 +273,9 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
     for(int i = 0; i < nVizinhos; i++){
       Sl = S;
       Ml = M;
-      generateRamdomNeighboor(n, m, d, Sl, P, Ml);
-      delta = valueOfSolution(n, m, d, Sl, P, Ml) - valueOfSolution(n, m, d, S, P, M);
+      if(!generateRamdomNeighboor(n, m, d, Sl, P, Ml, &delta))
+        printf("Failed to generate Neighboor...\n");
+      //delta = valueOfSolution(n, m, d, Sl, P, Ml) - valueOfSolution(n, m, d, S, P, M);
       if(delta <= 0){
         S = Sl;
         M = Ml;
@@ -321,6 +341,11 @@ int main(int argc, char* argv[]){
 
   printf("Lido: \nN: %d\nM: %d\nD: %d\n", n, m, d);
 
+  for(int i = 0; i < m; i++)
+    randomOrder.push_back(i);
+  for(int i = 0; i < n; i++)
+    randomOrder2.push_back(i);
+
   //Cria a solucao inicial
   createInitialSolution(n, m, d, S, P, M);
 
@@ -334,20 +359,24 @@ int main(int argc, char* argv[]){
 
   //Arquivo CSV
   char nomeArq[200];
-  strcpy(nomeArq, "Solution_");
-  strcat(nomeArq, argv[1]);
-  strcpy(strstr(nomeArq, "."), ".csv");
+  strcpy(nomeArq, argv[1]);
+  strcpy(strstr(nomeArq, "."), "Solution.csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/10.0, 0.9, vmax(n/10, 20), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/10.0, 0.9, vmax(n/8, 20), nomeArq);
 
   //Informa o valor da nova solucao
   printf("\nNovo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
+  if(isValid(n, m, d, S, P, M))
+    printf("A solucao final eh valida\n");
+  else{
+    printf("ERRO: Solucao final invalida!\n");
+    return 0;
+  }
 
   //Salva a solucao em um arquivo
-  strcpy(nomeArq, "Solution_");
-  strcat(nomeArq, argv[1]);
-  strcpy(strstr(nomeArq, "."), ".txt");
+  strcpy(nomeArq, argv[1]);
+  strcpy(strstr(nomeArq, "."), "Solution.txt");
   saveSolution(n, m, d, S, P, M, nomeArq);
 
   printf("\nResultado salvo em: %s\n", nomeArq);
