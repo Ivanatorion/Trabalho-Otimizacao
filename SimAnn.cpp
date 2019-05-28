@@ -10,8 +10,9 @@
 
 using namespace std;
 
-vector<int> randomOrder;
-vector<int> randomOrder2;
+int *freeTime;
+int *randomOrder;
+int *randomOrder2;
 
 int intFromString(char str[]){
   int resultado = 0, i;
@@ -37,7 +38,7 @@ int readIntLine(FILE *fp){
   return intFromString(numLido);
 }
 
-bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<bool> &M,  char fileName[]){
+bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<int> &M,  char fileName[]){
 
   FILE *fp = fopen(fileName, "r");
 
@@ -55,9 +56,7 @@ bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<boo
   for(int i = 0; i < *n; i++){
     S.push_back(0);
     P.push_back(readIntLine(fp));
-    for(int j = 0; j < *m; j++){
-      M.push_back(false);
-    }
+    M.push_back(0);
   }
 
   fclose(fp);
@@ -84,8 +83,7 @@ void sorts(vector<int> &order, vector<int> P){
   }
 }
 
-//Cria uma solucao inicial
-void createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M){
+void createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
   int nextFree[m]; //Next Free time
   int choosenMachine;
 
@@ -109,14 +107,17 @@ void createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, 
     }
 
     S[order[i]] = nextFree[choosenMachine] - P[order[i]];
-    M[order[i] + n*choosenMachine] = true;
+    M[order[i]] = choosenMachine;
     nextFree[choosenMachine] = nextFree[choosenMachine] - P[order[i]];
   }
+
+  for(int j = 0; j < m; j++)
+    freeTime[j] = nextFree[j];
 
 }
 
 //Retorna o valor da solucao (Executa muito rapido)
-int valueOfSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M){
+int valueOfSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
   int val = 0;
 
   for(int i = 0; i < n; i++)
@@ -126,20 +127,7 @@ int valueOfSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<
 }
 
 //Verifica se uma solucao eh valida
-bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M){
-  int nExecs;
-
-  //1 e somente 1 maquina executa certa tarefa
-  for(int i = 0; i < n; i++){
-    nExecs = 0;
-    for(int j = 0; j < m; j++){
-      if(M[i + j*n])
-        nExecs++;
-    }
-    if(nExecs != 1)
-      return false;
-  }
-
+bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
   //Nenhuma tarefa termina depois do DeadLine ou comeca antes do tempo = 0
   for(int i = 0; i < n; i++){
     if(S[i] < 0 || S[i] + P[i] > d)
@@ -149,11 +137,9 @@ bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &
   //Nao ha conflitos (Demora pra avaliar isso aqui...)
   for(int x = 0; x < n; x++){
     for(int y = x+1; y < n; y++){
-      for(int j = 0; j < m; j++){
-        if(M[x + j*n] && M[y + j*n]){
-          if(!(S[x] + P[x] <= S[y] || S[y] + P[y] <= S[x])){
-            return false;
-          }
+      if(M[x] == M[y]){
+        if(!(S[x] + P[x] <= S[y] || S[y] + P[y] <= S[x])){
+          return false;
         }
       }
     }
@@ -162,16 +148,33 @@ bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &
   return true;
 }
 
+void printSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M){
+  for(int i = 0; i < n; i++)
+    printf("S[%d]: %d\n", i, S[i]);
+
+  for(int j = 0; j < m; j++){
+    printf("M%d: { ", j);
+
+    for(int i = 0; i < n; i++)
+      if(M[i] == j)
+        printf("%d ", i);
+
+    printf("}\n");
+  }
+  printf("Value: %d\n", valueOfSolution(n, m, d, S, P, M));
+}
+
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
 //Pode demorar um tempo consideravel, pois nem todo vizinho eh valido...
-bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P, vector<bool> &M, double* delta){
-  int sol;
+bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M, double* delta){
   bool cantPlace;
-
   int p1, p2, aux;
-  int j;
 
-  for(int i = 0; i < m*20; i++){
+  int cT, cM;
+
+  vector<int> sortedMachine;
+
+  for(int i = 0; i < m*30; i++){
     p1 = rand()%m;
     p2 = rand()%m;
 
@@ -180,7 +183,7 @@ bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P
     randomOrder[p2] = aux;
   }
 
-  for(int i = 0; i < n*20; i++){
+  for(int i = 0; i < n*30; i++){
     p1 = rand()%n;
     p2 = rand()%n;
 
@@ -189,31 +192,43 @@ bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P
     randomOrder2[p2] = aux;
   }
 
-  for(int sol1 = 0; sol1 < n; sol1++){
-    sol = randomOrder2[sol1];
-    for(int newStart = d - P[sol]; newStart >= 0; newStart--){
-      for(int j1 = 0; j1 < m; j1++){
-        j = randomOrder[j1];
+  for(int i = 0; i < n; i++){
+    cT = randomOrder2[i];
+    for(int j = 0; j < m; j++){
+      cM = randomOrder[j];
+      if(freeTime[cM] >= P[cT] && cM != M[cT]){
 
-        cantPlace = false;
-        for(int x = 0; x < n; x++){
-          if(M[j*n + x]){
-            if(!(S[x] + P[x] <= newStart || newStart + P[sol] <= S[x]))
-              cantPlace = true;
+        *delta = S[cT];
+        S[cT] = freeTime[cM] - P[cT];
+        *delta = *delta - S[cT];
+        freeTime[cM] = S[cT]; //freeTime[cM] - P[cT]
+
+        //Sorts all Jobs on the removed job machine
+        sortedMachine.clear();
+        for(int k = 0; k < n; k++){
+          if(k != cT && M[k] == M[cT]){
+            sortedMachine.push_back(k);
+            p1 = sortedMachine.size() - 1;
+            while(p1 > 0 && P[sortedMachine[p1]] < P[sortedMachine[p1-1]]){
+              p2 = sortedMachine[p1];
+              sortedMachine[p1] = sortedMachine[p1-1];
+              sortedMachine[p1-1] = p2;
+              p1--;
+            }
           }
         }
-        if(!cantPlace){
-          *delta = S[sol] - newStart;
 
-          S[sol] = newStart;
-
-          for(int z = 0; z < m; z++)
-            M[z*n + sol] = false;
-
-          M[j*n + sol] = true;
-
-          return true;
+        freeTime[M[cT]] = d;
+        for(int k = 0; k < sortedMachine.size(); k++){
+          *delta = *delta + S[sortedMachine[k]];
+          S[sortedMachine[k]] = freeTime[M[cT]] - P[sortedMachine[k]];
+          *delta = *delta - S[sortedMachine[k]];
+          freeTime[M[cT]] = S[sortedMachine[k]]; //freeTime[M[cT]] - P[sortedMachine[k]];
         }
+
+        M[cT] = cM;
+
+        return true;
       }
     }
   }
@@ -231,9 +246,10 @@ bool shouldAccept(double delta, double temperature){
 }
 
 //Simulated Annealing
-void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<bool> &M, double temperature, double decay, int nVizinhos, char fileName[]){
+void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M, double temperature, double decay, int nVizinhos, char fileName[]){
   vector<int> Sl;
-  vector<bool> Ml;
+  vector<int> Ml;
+  int prevFreeTime[m];
   const double limitTemperature = 0.01;
 
   double delta;
@@ -273,9 +289,13 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
     for(int i = 0; i < nVizinhos; i++){
       Sl = S;
       Ml = M;
+
+      for(int j = 0; j < m; j++)
+        prevFreeTime[j] = freeTime[j];
+
       if(!generateRamdomNeighboor(n, m, d, Sl, P, Ml, &delta))
         printf("Failed to generate Neighboor...\n");
-      //delta = valueOfSolution(n, m, d, Sl, P, Ml) - valueOfSolution(n, m, d, S, P, M);
+
       if(delta <= 0){
         S = Sl;
         M = Ml;
@@ -285,6 +305,10 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
           S = Sl;
           M = Ml;
         }
+        else{
+          for(int j = 0; j < m; j++)
+            freeTime[j] = prevFreeTime[j];
+        }
       }
     }
     temperature = temperature * decay;
@@ -293,7 +317,7 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
 }
 
 //Salva a solucao resultado em um arquivo
-void saveSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<bool> &M, char fileName[]){
+void saveSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M, char fileName[]){
   FILE *fp = fopen(fileName, "w");
 
   for(int i = 0; i < n; i++)
@@ -303,7 +327,7 @@ void saveSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<
     fprintf(fp, "M%d: { ", j);
 
     for(int i = 0; i < n; i++)
-      if(M[j*n + i])
+      if(M[i] == j)
         fprintf(fp, "%d ", i);
 
     fprintf(fp, "}\n");
@@ -324,7 +348,7 @@ int main(int argc, char* argv[]){
 
   //Saida
   vector<int> S;
-  vector<bool> M;
+  vector<int> M;
 
   srand(time(0));
 
@@ -341,10 +365,14 @@ int main(int argc, char* argv[]){
 
   printf("Lido: \nN: %d\nM: %d\nD: %d\n", n, m, d);
 
+  freeTime = new int[m];
+  randomOrder = new int[m];
+  randomOrder2 = new int[n];
+
   for(int i = 0; i < m; i++)
-    randomOrder.push_back(i);
+    randomOrder[i] = i;
   for(int i = 0; i < n; i++)
-    randomOrder2.push_back(i);
+    randomOrder2[i] = i;
 
   //Cria a solucao inicial
   createInitialSolution(n, m, d, S, P, M);
@@ -363,10 +391,10 @@ int main(int argc, char* argv[]){
   strcpy(strstr(nomeArq, "."), "Solution.csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/10.0, 0.9, vmax(n/8, 20), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/20, 0.9, vmax(n/4, 50), nomeArq);
 
   //Informa o valor da nova solucao
-  printf("\nNovo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
+  printf("Novo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
   if(isValid(n, m, d, S, P, M))
     printf("A solucao final eh valida\n");
   else{
@@ -380,6 +408,10 @@ int main(int argc, char* argv[]){
   saveSolution(n, m, d, S, P, M, nomeArq);
 
   printf("\nResultado salvo em: %s\n", nomeArq);
+
+  delete[] freeTime;
+  delete[] randomOrder;
+  delete[] randomOrder2;
 
   return 0;
 }
