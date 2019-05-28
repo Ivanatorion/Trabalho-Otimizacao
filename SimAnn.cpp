@@ -64,10 +64,10 @@ bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<int
 }
 
 //Funcao auxiliar pra decidir a ordem que as tarefas sao colocadas nas maquinas
-void sorts(vector<int> &order, vector<int> P){
+void sorts(int order[], int n, vector<int> P){
   int j;
   int aux;
-  for(int i = 1; i < order.size(); i++){
+  for(int i = 1; i < n; i++){
     j = i;
     while(j > 0 && P[j] > P[j-1]){
       aux = P[j];
@@ -83,37 +83,44 @@ void sorts(vector<int> &order, vector<int> P){
   }
 }
 
-void createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
-  int nextFree[m]; //Next Free time
-  int choosenMachine;
-
+//Cria uma solucao inicial
+//Retorna false se nao conseguir
+bool createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
   for(int j = 0; j < m; j++)
-    nextFree[j] = d;
+    freeTime[j] = d;
 
-  vector<int> order;
+  int order[n];
+
   for(int i = 0; i < n; i++)
-    order.push_back(i);
+    order[i] = i;
 
-  sorts(order, P);
+  sorts(order, n, P);
 
+  int k = 0;
   for(int i = 0; i < n; i++){
-    choosenMachine = 0;
-
-    while(nextFree[choosenMachine] - P[order[i]] < 0 && choosenMachine < m)
-      choosenMachine++;
-
-    if(choosenMachine == m){
-      choosenMachine = 0;
-    }
-
-    S[order[i]] = nextFree[choosenMachine] - P[order[i]];
-    M[order[i]] = choosenMachine;
-    nextFree[choosenMachine] = nextFree[choosenMachine] - P[order[i]];
+      while(freeTime[k] < P[order[i]]){
+        k++;
+        if(k >= m) k = 0;
+      }
+      S[order[i]] = freeTime[k] - P[order[i]];
+      freeTime[k] = freeTime[k] - P[order[i]];
+      M[order[i]] = k;
+      k++;
+      if(k >= m) k = 0;
   }
 
-  for(int j = 0; j < m; j++)
-    freeTime[j] = nextFree[j];
+  int tim;
+  for(int j = 0; j < m; j++){
+    tim = d;
+    for(int i = n-1; i >= 0; i--){
+      if(M[order[i]] == j){
+        S[order[i]] = tim - P[order[i]];
+        tim = tim - P[order[i]];
+      }
+    }
+  }
 
+  return true;
 }
 
 //Retorna o valor da solucao (Executa muito rapido)
@@ -343,7 +350,7 @@ int vmax(int a, int b){
 
 int main(int argc, char* argv[]){
   //Entradas
-  int n, m, d;
+  int n, m, d, initialValue;
   vector<int> P;
 
   //Saida
@@ -376,8 +383,9 @@ int main(int argc, char* argv[]){
 
   //Cria a solucao inicial
   createInitialSolution(n, m, d, S, P, M);
+  initialValue = valueOfSolution(n, m, d, S, P, M);
 
-  printf("Criada solucao inicial com valor: %d\n", valueOfSolution(n, m, d, S, P, M));
+  printf("Criada solucao inicial com valor: %d\n", initialValue);
   if(isValid(n, m, d, S, P, M))
     printf("A solucao inicial eh valida\n");
   else{
@@ -391,9 +399,10 @@ int main(int argc, char* argv[]){
   strcpy(strstr(nomeArq, "."), "Solution.csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/20, 0.9, vmax(n/4, 50), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/2750, 0.9, vmax(n*20, 50), nomeArq);
 
   //Informa o valor da nova solucao
+  printf("Valor inicial: %d\n", initialValue);
   printf("Novo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
   if(isValid(n, m, d, S, P, M))
     printf("A solucao final eh valida\n");
