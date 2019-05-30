@@ -19,7 +19,7 @@ do
 	   mkdir Results/$inst
 	   cp instancias/$inst/plotinst.sh Results/$inst/.
            cp instancias/$inst/$inst".dat" Results/$inst/.
-	   ./SOLV instancias/$inst/$inst.dat &
+	   ./saApp instancias/$inst/$inst.dat &
 	   pids[${i}]=$!
 	   #echo $((pids[${i}]))
 	   i=$((i+1))

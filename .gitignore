@@ -1,2 +1,6 @@
-SOLV
-SOLV.exe
+*idea*
+saApp
+obj*
+bin*
+saApp.*
+.DS_Store
