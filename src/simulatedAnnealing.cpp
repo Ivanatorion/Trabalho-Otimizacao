@@ -132,7 +132,7 @@ int valueOfSolution(int numberOfTasks,
                     int duration[],
                     int machine[]) {
     int val = 0;
-
+    
     for(int i = 0; i < numberOfTasks; i++)
         val = val + (deadline - duration[i] - start[i]);
 
@@ -143,7 +143,6 @@ bool isInDeadlineInterval(int numberOfTasks, int deadline, int start[], int dura
     bool result = true;
     int i;
 
-    #pragma omp parallel for
     for(i = 0; i < numberOfTasks; i++) {
         if (start[i] < 0 || start[i] + duration[i] > deadline)
             result = false;
@@ -156,9 +155,7 @@ bool areThereConflicts(int numberOfTasks, int start[], int duration[], int machi
     bool result = true;
     int x, y;
 
-    #pragma omp parallel for private(y)
     for(x = 0; x < numberOfTasks; x++) {
-//        printf("Executando thread %d com x = %d\n", omp_get_thread_num(), x);
 
         for(y = x + 1; y < numberOfTasks; y++) {
 
@@ -193,7 +190,6 @@ bool isValid(int numberOfTasks,
         }
     }
 
-    printf("Result 1/2: %d/%d\n", result1, result2);
     return result1 && result2;
 }
 
@@ -347,7 +343,6 @@ void simulatedAnnealing(int numberOfTasks,
 
     int i, j, x, y;
 
-    #pragma omp parallel for
     for(i = 0; i < numberOfTasks; i++){
         bestStart[i] = start[i];
         bestMachine[i] = machine[i];
@@ -400,22 +395,13 @@ void simulatedAnnealing(int numberOfTasks,
 
         for(x = 0; x < numberOfNeighbors; x++) {
 
-            #pragma omp parallel sections
-            {
-                #pragma omp section
-                {
-                    for(i = 0; i < numberOfTasks; i++) {
-                        candidateStart[i] = start[i];
-                        candidateMachine[i] = machine[i];
-                    }
-                }
-
-                #pragma omp section
-                {
-                    for(j = 0; j < numberOfMachines; j++)
-                        prevFreeTime[j] = freeTime[j];
-                }
+            for(i = 0; i < numberOfTasks; i++) {
+                candidateStart[i] = start[i];
+                candidateMachine[i] = machine[i];
             }
+
+            for(j = 0; j < numberOfMachines; j++)
+                prevFreeTime[j] = freeTime[j];
 
             if(!generateRandomNeighbor(numberOfTasks, numberOfMachines, deadline, candidateStart, duration, candidateMachine))
                 printf("Failed to generate Neighboor...\n");
@@ -424,7 +410,6 @@ void simulatedAnnealing(int numberOfTasks,
 
             if(candidateValue < currentValue) {
 
-                #pragma omp parallel for
                 for(i = 0; i < numberOfTasks; i++){
                     start[i] = candidateStart[i];
                     machine[i] = candidateMachine[i];
@@ -432,7 +417,6 @@ void simulatedAnnealing(int numberOfTasks,
 
                 if(candidateValue < bestValue) {
 
-                    #pragma omp parallel for
                     for(i = 0; i < numberOfTasks; i++) {
                         bestStart[i] = start[i];
                         bestMachine[i] = machine[i];
@@ -446,7 +430,6 @@ void simulatedAnnealing(int numberOfTasks,
                 delta = candidateValue - currentValue;
                 if(shouldAcceptNeighbor(delta, temperature)) {
 
-                    #pragma omp parallel for
                     for(i = 0; i < numberOfTasks; i++){
                         start[i] = candidateStart[i];
                         machine[i] = candidateMachine[i];
@@ -454,7 +437,6 @@ void simulatedAnnealing(int numberOfTasks,
 
                 } else {
 
-                    #pragma omp parallel for
                     for(j = 0; j < numberOfMachines; j++)
                         freeTime[j] = prevFreeTime[j];
                 }
@@ -466,7 +448,6 @@ void simulatedAnnealing(int numberOfTasks,
 
     fclose(fp);
 
-    #pragma omp parallel for
     for(int i = 0; i < numberOfTasks; i++){
         start[i] = bestStart[i];
         machine[i] = bestMachine[i];
