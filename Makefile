@@ -7,8 +7,8 @@ all: utils cleaner
 	${CC} -g -o saApp -fopenmp -O3 ${SRC}/main.cpp ${OBJ}/utils.o ${OBJ}/simulatedAnnealing.o
 
 utils:
-	${CC} -g -c ${SRC}/utils.cpp
-	${CC} -g -c ${SRC}/simulatedAnnealing.cpp
+	${CC} -g -fopenmp -c ${SRC}/utils.cpp
+	${CC} -g -fopenmp -c ${SRC}/simulatedAnnealing.cpp
 
 cleaner:
 	mkdir -p ${OBJ}

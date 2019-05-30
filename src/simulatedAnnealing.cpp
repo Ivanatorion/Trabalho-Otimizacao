@@ -18,9 +18,28 @@ extern int *freeTime;
 extern int *randomTasks;
 extern int *randomMachines;
 
-void sorts(int index[], int duration[], int numberOfTasks) {
-    sort(index, (index + numberOfTasks - 1), [duration](int a, int b) {return duration[a] < duration[b];});
-    sort(duration, (duration + numberOfTasks - 1), [](int a, int b) {return a < b;});
+void sorts(int order[], int duration[], int numberOfTasks){
+    int i, j, aux;
+    int copyDuration[numberOfTasks];
+
+    for(i = 0; i < numberOfTasks; i++)
+        copyDuration[i] = duration[i];
+
+    for(i = 1; i < numberOfTasks; i++){
+        j = i;
+
+        while(j > 0 && copyDuration[j] > copyDuration[j-1]){
+            aux = copyDuration[j];
+            copyDuration[j] = copyDuration[j-1];
+            copyDuration[j-1] = aux;
+
+            aux = order[j];
+            order[j] = order[j-1];
+            order[j-1] = aux;
+
+            j--;
+        }
+    }
 }
 
 bool createInitialSolution(int numberOfTasks,
@@ -32,12 +51,10 @@ bool createInitialSolution(int numberOfTasks,
 
     int i, j, process, chosenMachine;
 
-    #pragma omp parallel for num_threads(4)
     for(j = 0; j < numberOfMachines; j++)
         freeTime[j] = deadline;
 
     int order[numberOfTasks];
-    #pragma omp parallel for num_threads(4)
     for(i = 0; i < numberOfTasks; i++)
         order[i] = i;
 
@@ -68,12 +85,10 @@ bool createInitialSolutionG(int numberOfTasks,
                             int machine[]) {
     int i, j;
 
-    #pragma omp parallel for num_threads(4)
     for(j = 0; j < numberOfMachines; j++)
         freeTime[j] = deadline;
 
     int order[numberOfTasks];
-    #pragma omp parallel for num_threads(4)
     for(i = 0; i < numberOfTasks; i++)
         order[i] = i;
 
@@ -128,14 +143,10 @@ bool isInDeadlineInterval(int numberOfTasks, int deadline, int start[], int dura
     bool result = true;
     int i;
 
-    #pragma omp parallel for private(i) num_threads(8)
+    #pragma omp parallel for
     for(i = 0; i < numberOfTasks; i++) {
-        if (start[i] < 0 || start[i] + duration[i] > deadline) {
+        if (start[i] < 0 || start[i] + duration[i] > deadline)
             result = false;
-            #pragma omp cancel for
-        }
-
-        #pragma omp cancellation point for
     }
 
     return result;
@@ -145,27 +156,16 @@ bool areThereConflicts(int numberOfTasks, int start[], int duration[], int machi
     bool result = true;
     int x, y;
 
-    #pragma omp parallel for private(x) num_threads(8)
+    #pragma omp parallel for private(y)
     for(x = 0; x < numberOfTasks; x++) {
-        #pragma omp cancellation point for
-        printf("Executando thread %d com x = %d\n", omp_get_thread_num(), x);
+//        printf("Executando thread %d com x = %d\n", omp_get_thread_num(), x);
 
-        #pragma omp parallel for private(y) num_threads(4)
         for(y = x + 1; y < numberOfTasks; y++) {
-            printf("Executando thread %d com x = %d e y = %d\n", omp_get_thread_num(), x, y);
 
             if(machine[x] == machine[y]) {
-                if (!(start[x] + duration[x] <= start[y] || start[y] + duration[y] <= start[x])) {
+                if (!(start[x] + duration[x] <= start[y] || start[y] + duration[y] <= start[x]))
                     result = false;
-                    #pragma omp cancel for
-                }
             }
-
-            #pragma omp cancellation point for
-        }
-
-        if(!result) {
-            #pragma omp cancel for
         }
     }
 
@@ -193,6 +193,7 @@ bool isValid(int numberOfTasks,
         }
     }
 
+    printf("Result 1/2: %d/%d\n", result1, result2);
     return result1 && result2;
 }
 
@@ -218,16 +219,16 @@ void printSolution(int numberOfTasks,
     printf("Value: %d\n", valueOfSolution(numberOfTasks, numberOfMachines, deadline, start, duration, machine));
 }
 
-void changeOrderRandomly(int n, int *random) {
+void changeOrderRandomly(int n, int **random) {
     int aux, p1, p2;
 
     for(int i = 0; i < n * 30; i++) {
         p1 = rand() % n;
         p2 = rand() % n;
 
-        aux = random[p1];
-        random[p1] = random[p2];
-        random[p2] = aux;
+        aux = (*random)[p1];
+        (*random)[p1] = (*random)[p2];
+        (*random)[p2] = aux;
     }
 }
 
@@ -239,56 +240,79 @@ bool generateRandomNeighbor(int numberOfTasks,
                             int machine[]) {
 
     vector<int> sortedTasks;
-    int process, machine_temp;
+    int task, machine_temp;
     int p1, p2;
 
     #pragma omp parallel sections
     {
         #pragma omp section
         {
-            changeOrderRandomly(numberOfMachines, randomMachines);
+            changeOrderRandomly(numberOfMachines, &randomMachines);
         }
 
         #pragma omp section
         {
-            changeOrderRandomly(numberOfTasks, randomTasks);
+            changeOrderRandomly(numberOfTasks, &randomTasks);
         }
-    }
+    };
 
     for(int i = 0; i < numberOfTasks; i++) {
-        process = randomTasks[i];
+        task = randomTasks[i];
 
         for(int j = 0; j < numberOfMachines; j++) {
             machine_temp = randomMachines[j];
 
-            if(freeTime[machine_temp] >= duration[process] && machine_temp != machine[process]) {
+            if(freeTime[machine_temp] >= duration[task] && machine_temp != machine[task]) {
 
-                start[process] = freeTime[machine_temp] - duration[process];
-                machine[process] = machine_temp;
-                freeTime[machine_temp] = start[process];
+                start[task] = freeTime[machine_temp] - duration[task];
+                freeTime[machine_temp] = start[task];
 
                 // Sort all jobs on the removed job machine
                 sortedTasks.clear();
                 for(int k = 0; k < numberOfTasks; k++) {
 
-                    if(k != process && machine[k] == machine[process]) {
+                    if(k != task && machine[k] == machine[task]) {
                         sortedTasks.push_back(k);
                         p1 = sortedTasks.size() - 1;
 
-                        while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1-1]]) {
+                        while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1 - 1]]) {
                             p2 = sortedTasks[p1];
-                            sortedTasks[p1] = sortedTasks[p1-1];
-                            sortedTasks[p1-1] = p2;
+                            sortedTasks[p1] = sortedTasks[p1 - 1];
+                            sortedTasks[p1 - 1] = p2;
                             p1--;
                         }
                     }
                 }
 
-                freeTime[machine[process]] = deadline;
+                freeTime[machine[task]] = deadline;
 
                 for(int k = 0; k < sortedTasks.size(); k++){
-                    start[sortedTasks[k]] = freeTime[machine[process]] - duration[sortedTasks[k]];
-                    freeTime[machine[process]] = start[sortedTasks[k]];
+                    start[sortedTasks[k]] = freeTime[machine[task]] - duration[sortedTasks[k]];
+                    freeTime[machine[task]] = start[sortedTasks[k]];
+                }
+
+                machine[task] = machine_temp;
+
+                sortedTasks.clear();
+                for(int k = 0; k < numberOfTasks; k++) {
+                    if(machine[k] == machine_temp) {
+                        sortedTasks.push_back(k);
+                        p1 = sortedTasks.size() - 1;
+
+                        while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1 - 1]]) {
+                            p2 = sortedTasks[p1];
+                            sortedTasks[p1] = sortedTasks[p1 - 1];
+                            sortedTasks[p1 - 1] = p2;
+                            p1--;
+                        }
+                    }
+                }
+
+                freeTime[machine_temp] = deadline;
+
+                for(int k = 0; k < sortedTasks.size(); k++){
+                    start[sortedTasks[k]] = freeTime[machine_temp] - duration[sortedTasks[k]];
+                    freeTime[machine_temp] = start[sortedTasks[k]];
                 }
 
                 return true;

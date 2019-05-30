@@ -43,24 +43,28 @@ int main(int argc, char* argv[]){
     }
     printf("Pronto!\n");
 
+    printf("Número de tarefas: %d\n", numberOfTasks);
+    printf("Número de máquinas: %d\n", numberOfMachines);
+    printf("Deadline: %d\n", deadline);
+
     freeTime = new int[numberOfMachines];
     randomTasks = new int[numberOfTasks];
     randomMachines = new int[numberOfMachines];
 
     printf("Inicializando estruturas randomizadas... ");
-    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < numberOfMachines; i++)
         randomMachines[i] = i;
 
-    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < numberOfTasks; i++)
         randomTasks[i] = i;
     printf("Pronto!\n");
 
     // Cria a solução inicial
-    printf("Gerando soluções iniciais... ");
+    printf("Gerando soluções iniciais (1/2)...\n");
     createInitialSolutionG(numberOfTasks, numberOfMachines, deadline, start, duration, machine);
     goodInitialValue = valueOfSolution(numberOfTasks, numberOfMachines, deadline, start, duration, machine);
+
+    printf("Gerando soluções iniciais (2/2)...\n");
 
     createInitialSolution(numberOfTasks, numberOfMachines, deadline, start, duration, machine);
     initialValue = valueOfSolution(numberOfTasks, numberOfMachines, deadline, start, duration, machine);
