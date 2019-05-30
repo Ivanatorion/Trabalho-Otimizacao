@@ -232,6 +232,27 @@ void changeOrderRandomly(int n, int **random) {
     }
 }
 
+void sortTasks(int k, int duration[], vector<int> &sortedTasks) {
+    sortedTasks.push_back(k);
+    int p2, p1 = sortedTasks.size() - 1;
+
+    while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1 - 1]]) {
+        p2 = sortedTasks[p1];
+        sortedTasks[p1] = sortedTasks[p1 - 1];
+        sortedTasks[p1 - 1] = p2;
+        p1--;
+    }
+}
+
+void updateState(int index, int deadline, int start[], int duration[], vector<int> &sortedTasks) {
+    freeTime[index] = deadline;
+
+    for(int k = 0; k < sortedTasks.size(); k++){
+        start[sortedTasks[k]] = freeTime[index] - duration[sortedTasks[k]];
+        freeTime[index] = start[sortedTasks[k]];
+    }
+}
+
 bool generateRandomNeighbor(int numberOfTasks,
                             int numberOfMachines,
                             int deadline,
@@ -241,7 +262,6 @@ bool generateRandomNeighbor(int numberOfTasks,
 
     vector<int> sortedTasks;
     int task, machine_temp;
-    int p1, p2;
 
     #pragma omp parallel sections
     {
@@ -270,50 +290,23 @@ bool generateRandomNeighbor(int numberOfTasks,
                 // Sort all jobs on the removed job machine
                 sortedTasks.clear();
                 for(int k = 0; k < numberOfTasks; k++) {
-
                     if(k != task && machine[k] == machine[task]) {
-                        sortedTasks.push_back(k);
-                        p1 = sortedTasks.size() - 1;
-
-                        while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1 - 1]]) {
-                            p2 = sortedTasks[p1];
-                            sortedTasks[p1] = sortedTasks[p1 - 1];
-                            sortedTasks[p1 - 1] = p2;
-                            p1--;
-                        }
+                        sortTasks(k, duration, sortedTasks);
                     }
                 }
 
-                freeTime[machine[task]] = deadline;
-
-                for(int k = 0; k < sortedTasks.size(); k++){
-                    start[sortedTasks[k]] = freeTime[machine[task]] - duration[sortedTasks[k]];
-                    freeTime[machine[task]] = start[sortedTasks[k]];
-                }
+                updateState(machine[task], deadline, start, duration, sortedTasks);
 
                 machine[task] = machine_temp;
 
                 sortedTasks.clear();
                 for(int k = 0; k < numberOfTasks; k++) {
                     if(machine[k] == machine_temp) {
-                        sortedTasks.push_back(k);
-                        p1 = sortedTasks.size() - 1;
-
-                        while(p1 > 0 && duration[sortedTasks[p1]] < duration[sortedTasks[p1 - 1]]) {
-                            p2 = sortedTasks[p1];
-                            sortedTasks[p1] = sortedTasks[p1 - 1];
-                            sortedTasks[p1 - 1] = p2;
-                            p1--;
-                        }
+                        sortTasks(k, duration, sortedTasks);
                     }
                 }
 
-                freeTime[machine_temp] = deadline;
-
-                for(int k = 0; k < sortedTasks.size(); k++){
-                    start[sortedTasks[k]] = freeTime[machine_temp] - duration[sortedTasks[k]];
-                    freeTime[machine_temp] = start[sortedTasks[k]];
-                }
+                updateState(machine_temp, deadline, start, duration, sortedTasks);
 
                 return true;
             }
@@ -354,7 +347,7 @@ void simulatedAnnealing(int numberOfTasks,
 
     int i, j, x, y;
 
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for
     for(i = 0; i < numberOfTasks; i++){
         bestStart[i] = start[i];
         bestMachine[i] = machine[i];
@@ -431,7 +424,7 @@ void simulatedAnnealing(int numberOfTasks,
 
             if(candidateValue < currentValue) {
 
-                #pragma omp parallel for num_threads(4)
+                #pragma omp parallel for
                 for(i = 0; i < numberOfTasks; i++){
                     start[i] = candidateStart[i];
                     machine[i] = candidateMachine[i];
@@ -439,7 +432,7 @@ void simulatedAnnealing(int numberOfTasks,
 
                 if(candidateValue < bestValue) {
 
-                    #pragma omp parallel for num_threads(4)
+                    #pragma omp parallel for
                     for(i = 0; i < numberOfTasks; i++) {
                         bestStart[i] = start[i];
                         bestMachine[i] = machine[i];
@@ -453,7 +446,7 @@ void simulatedAnnealing(int numberOfTasks,
                 delta = candidateValue - currentValue;
                 if(shouldAcceptNeighbor(delta, temperature)) {
 
-                    #pragma omp parallel for num_threads(4)
+                    #pragma omp parallel for
                     for(i = 0; i < numberOfTasks; i++){
                         start[i] = candidateStart[i];
                         machine[i] = candidateMachine[i];
@@ -461,7 +454,7 @@ void simulatedAnnealing(int numberOfTasks,
 
                 } else {
 
-                    #pragma omp parallel for num_threads(4)
+                    #pragma omp parallel for
                     for(j = 0; j < numberOfMachines; j++)
                         freeTime[j] = prevFreeTime[j];
                 }
@@ -473,7 +466,7 @@ void simulatedAnnealing(int numberOfTasks,
 
     fclose(fp);
 
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for
     for(int i = 0; i < numberOfTasks; i++){
         start[i] = bestStart[i];
         machine[i] = bestMachine[i];

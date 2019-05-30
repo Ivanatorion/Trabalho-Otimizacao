@@ -1,6 +1,10 @@
 #ifndef TRABALHO_OTIMIZACAO_SIMULATED_ANNEALING_HPP
 #define TRABALHO_OTIMIZACAO_SIMULATED_ANNEALING_HPP
 
+#include <vector>
+
+using namespace std;
+
 void sorts(int index[], int duration[], int numberOfTasks);
 
 bool createInitialSolution(int numberOfTasks,
@@ -43,6 +47,8 @@ void printSolution(int numberOfTasks,
                    int machine[]);
 
 void changeOrderRandomly(int n, int *random);
+
+void sortTasks(int k, int duration[], vector<int> &sortedTasks);
 
 bool generateRandomNeighbor(int numberOfTasks,
                             int numberOfMachines,
