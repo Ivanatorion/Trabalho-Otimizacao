@@ -38,7 +38,7 @@ int readIntLine(FILE *fp){
   return intFromString(numLido);
 }
 
-bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<int> &M,  char fileName[]){
+bool loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[]){
 
   FILE *fp = fopen(fileName, "r");
 
@@ -49,14 +49,14 @@ bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<int
   *n = readIntLine(fp);
   *d = readIntLine(fp);
 
-  S.clear();
-  P.clear();
-  M.clear();
+  (*S) = new int[*n];
+  (*P) = new int[*n];
+  (*M) = new int[*n];
 
   for(int i = 0; i < *n; i++){
-    S.push_back(0);
-    P.push_back(readIntLine(fp));
-    M.push_back(0);
+    (*S)[i] = 0;
+    (*M)[i] = 0;
+    (*P)[i] = readIntLine(fp);
   }
 
   fclose(fp);
@@ -64,15 +64,21 @@ bool loadFile(int *n, int *m, int *d, vector<int> &S, vector<int> &P, vector<int
 }
 
 //Funcao auxiliar pra decidir a ordem que as tarefas sao colocadas nas maquinas
-void sorts(int order[], int n, vector<int> P){
+void sorts(int order[], int n, int P[]){
   int j;
   int aux;
+
+  int cpyP[n];
+
+  for(int i = 0; i < n; i++)
+    cpyP[i] = P[i];
+
   for(int i = 1; i < n; i++){
     j = i;
-    while(j > 0 && P[j] > P[j-1]){
-      aux = P[j];
-      P[j] = P[j-1];
-      P[j-1] = aux;
+    while(j > 0 && cpyP[j] > cpyP[j-1]){
+      aux = cpyP[j];
+      cpyP[j] = cpyP[j-1];
+      cpyP[j-1] = aux;
 
       aux = order[j];
       order[j] = order[j-1];
@@ -83,9 +89,43 @@ void sorts(int order[], int n, vector<int> P){
   }
 }
 
-//Cria uma solucao inicial
-//Retorna false se nao conseguir
-bool createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
+//Cria uma solucao inicial (Ruim)
+bool createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
+  int nextFree[m]; //Next Free time
+  int choosenMachine;
+
+  for(int j = 0; j < m; j++)
+    nextFree[j] = d;
+
+  int order[n];
+
+  for(int i = 0; i < n; i++)
+    order[i] = i;
+
+  sorts(order, n, P);
+
+  for(int i = 0; i < n; i++){
+    choosenMachine = 0;
+
+    while(nextFree[choosenMachine] - P[order[i]] < 0 && choosenMachine < m)
+      choosenMachine++;
+
+    if(choosenMachine == m){
+      choosenMachine = 0;
+    }
+
+    S[order[i]] = nextFree[choosenMachine] - P[order[i]];
+    M[order[i]] = choosenMachine;
+    nextFree[choosenMachine] = nextFree[choosenMachine] - P[order[i]];
+  }
+
+  for(int j = 0; j < m; j++)
+    freeTime[j] = nextFree[j];
+
+}
+
+//Cria uma solucao inicial (Boa)
+bool createInitialSolutionG(int n, int m, int d, int S[], int P[], int M[]){
   for(int j = 0; j < m; j++)
     freeTime[j] = d;
 
@@ -124,7 +164,7 @@ bool createInitialSolution(int n, int m, int d, vector<int> &S, vector<int> &P, 
 }
 
 //Retorna o valor da solucao (Executa muito rapido)
-int valueOfSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
+int valueOfSolution(int n, int m, int d, int S[], int P[], int M[]){
   int val = 0;
 
   for(int i = 0; i < n; i++)
@@ -134,14 +174,14 @@ int valueOfSolution(int n, int m, int d, vector<int> &S, vector<int> &P, vector<
 }
 
 //Verifica se uma solucao eh valida
-bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M){
+bool isValid(int n, int m, int d, int S[], int P[], int M[]){
   //Nenhuma tarefa termina depois do DeadLine ou comeca antes do tempo = 0
   for(int i = 0; i < n; i++){
     if(S[i] < 0 || S[i] + P[i] > d)
       return false;
   }
 
-  //Nao ha conflitos (Demora pra avaliar isso aqui...)
+  //Nao ha conflitos
   for(int x = 0; x < n; x++){
     for(int y = x+1; y < n; y++){
       if(M[x] == M[y]){
@@ -155,7 +195,7 @@ bool isValid(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M
   return true;
 }
 
-void printSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M){
+void printSolution(int n, int m, int d, int S[], int P[], int M[]){
   for(int i = 0; i < n; i++)
     printf("S[%d]: %d\n", i, S[i]);
 
@@ -173,7 +213,7 @@ void printSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector
 
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
 //Pode demorar um tempo consideravel, pois nem todo vizinho eh valido...
-bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P, vector<int> &M, double* delta){
+bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], double* delta){
   bool cantPlace;
   int p1, p2, aux;
 
@@ -235,6 +275,28 @@ bool generateRamdomNeighboor(int n, int m, int d, vector<int> &S, vector<int> &P
 
         M[cT] = cM;
 
+        sortedMachine.clear();
+        for(int k = 0; k < n; k++){
+          if(M[k] == cM){
+            sortedMachine.push_back(k);
+            p1 = sortedMachine.size() - 1;
+            while(p1 > 0 && P[sortedMachine[p1]] < P[sortedMachine[p1-1]]){
+              p2 = sortedMachine[p1];
+              sortedMachine[p1] = sortedMachine[p1-1];
+              sortedMachine[p1-1] = p2;
+              p1--;
+            }
+          }
+        }
+
+        freeTime[cM] = d;
+        for(int k = 0; k < sortedMachine.size(); k++){
+          *delta = *delta + S[sortedMachine[k]];
+          S[sortedMachine[k]] = freeTime[cM] - P[sortedMachine[k]];
+          *delta = *delta - S[sortedMachine[k]];
+          freeTime[cM] = S[sortedMachine[k]];
+        }
+
         return true;
       }
     }
@@ -253,9 +315,20 @@ bool shouldAccept(double delta, double temperature){
 }
 
 //Simulated Annealing
-void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M, double temperature, double decay, int nVizinhos, char fileName[]){
-  vector<int> Sl;
-  vector<int> Ml;
+void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double temperature, double decay, int nVizinhos, char fileName[]){
+  int Sl[n];
+  int Ml[n];
+  int Sb[n];
+  int Mb[n];
+
+  for(int i = 0; i < n; i++){
+    Sb[i] = S[i];
+    Mb[i] = M[i];
+  }
+
+  int valB = valueOfSolution(n, m, d, S, P, M);
+  int valA = valB;
+
   int prevFreeTime[m];
   const double limitTemperature = 0.01;
 
@@ -293,9 +366,11 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
     }
     printf("\n");
 
-    for(int i = 0; i < nVizinhos; i++){
-      Sl = S;
-      Ml = M;
+    for(int x = 0; x < nVizinhos; x++){
+      for(int i = 0; i < n; i++){
+        Sl[i] = S[i];
+        Ml[i] = M[i];
+      }
 
       for(int j = 0; j < m; j++)
         prevFreeTime[j] = freeTime[j];
@@ -304,27 +379,48 @@ void simulatedAnnealing(int n, int m, int d, vector<int> &S,  vector<int> &P,  v
         printf("Failed to generate Neighboor...\n");
 
       if(delta <= 0){
-        S = Sl;
-        M = Ml;
+        valA = valA + (int) delta;
+
+        for(int i = 0; i < n; i++){
+          S[i] = Sl[i];
+          M[i] = Ml[i];
+        }
+
+        if(valA < valB){
+            for(int i = 0; i < n; i++){
+              Sb[i] = S[i];
+              Mb[i] = M[i];
+            }
+            valB = valA;
+            printf("New Best! %d\n", valA);
+        }
       }
       else{
         if(shouldAccept(delta, temperature)){
-          S = Sl;
-          M = Ml;
+          for(int i = 0; i < n; i++){
+            S[i] = Sl[i];
+            M[i] = Ml[i];
+          }
+          valA = valA + (int) delta;
         }
         else{
           for(int j = 0; j < m; j++)
-            freeTime[j] = prevFreeTime[j];
+           freeTime[j] = prevFreeTime[j];
         }
       }
     }
     temperature = temperature * decay;
   }
   fclose(fp);
+
+  for(int i = 0; i < n; i++){
+    S[i] = Sb[i];
+    M[i] = Mb[i];
+  }
 }
 
 //Salva a solucao resultado em um arquivo
-void saveSolution(int n, int m, int d, vector<int> &S,  vector<int> &P,  vector<int> &M, char fileName[]){
+void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[]){
   FILE *fp = fopen(fileName, "w");
 
   for(int i = 0; i < n; i++)
@@ -350,27 +446,30 @@ int vmax(int a, int b){
 
 int main(int argc, char* argv[]){
   //Entradas
-  int n, m, d, initialValue;
-  vector<int> P;
+  int n, m, d, initialValue, goodInitValue;
+  int* P;
 
   //Saida
-  vector<int> S;
-  vector<int> M;
+  int* S;
+  int* M;
 
-  srand(time(0));
-
-  if(argc != 2){
-    printf("Informe o arquivo de entrada\n");
+  if(argc != 3){
+    printf("Parametros da linha de comando: ARQUIVO_DE_ENTRADA SEED\n");
     return 0;
   }
 
+  int seed = intFromString(argv[2]);
+  if(seed == 0){
+    seed = time(0);
+  }
+
+  srand(seed);
+
   //Le arquivo de entrada
-  if(!loadFile(&n, &m, &d, S, P, M, argv[1])){
+  if(!loadFile(&n, &m, &d, &S, &P, &M, argv[1])){
     printf("Nao pode abrir %s\n", argv[1]);
     return 0;
   }
-
-  printf("Lido: \nN: %d\nM: %d\nD: %d\n", n, m, d);
 
   freeTime = new int[m];
   randomOrder = new int[m];
@@ -382,9 +481,13 @@ int main(int argc, char* argv[]){
     randomOrder2[i] = i;
 
   //Cria a solucao inicial
+  createInitialSolutionG(n, m, d, S, P, M);
+  goodInitValue = valueOfSolution(n, m, d, S, P, M);
+
   createInitialSolution(n, m, d, S, P, M);
   initialValue = valueOfSolution(n, m, d, S, P, M);
 
+  printf("Seed utilizada: %d\n", seed);
   printf("Criada solucao inicial com valor: %d\n", initialValue);
   if(isValid(n, m, d, S, P, M))
     printf("A solucao inicial eh valida\n");
@@ -399,9 +502,10 @@ int main(int argc, char* argv[]){
   strcpy(strstr(nomeArq, "."), "Solution.csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, valueOfSolution(n, m, d, S, P, M)/2750, 0.9, vmax(n*20, 50), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, vmax(10, valueOfSolution(n, m, d, S, P, M)/2750), 0.9, vmax(n*25, 50), nomeArq);
 
   //Informa o valor da nova solucao
+  printf("Valor inicial bom: %d\n", goodInitValue);
   printf("Valor inicial: %d\n", initialValue);
   printf("Novo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
   if(isValid(n, m, d, S, P, M))
@@ -421,6 +525,9 @@ int main(int argc, char* argv[]){
   delete[] freeTime;
   delete[] randomOrder;
   delete[] randomOrder2;
+  delete[] S;
+  delete[] P;
+  delete[] M;
 
   return 0;
 }
