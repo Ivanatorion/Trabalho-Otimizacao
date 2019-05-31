@@ -1,18 +1,16 @@
-#include <cstdio>
-#include <vector>
+#include <stdio.h>
 #include <string.h>
-#include <cstdlib>
-#include <ctime>
+#include <stdlib.h>
+#include <time.h>
 #include <math.h>
-#include <errno.h>
 
 #define EULER 2.7182819
-
-using namespace std;
 
 int *freeTime;
 int *randomOrder;
 int *randomOrder2;
+
+int *sortedMachine; //Used by neighboor generator
 
 int intFromString(char str[]){
   int resultado = 0, i;
@@ -38,20 +36,20 @@ int readIntLine(FILE *fp){
   return intFromString(numLido);
 }
 
-bool loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[]){
+int loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[]){
 
   FILE *fp = fopen(fileName, "r");
 
-  if(!fp) return false;
+  if(!fp) return 0;
 
   //Le m, n e d
   *m = readIntLine(fp);
   *n = readIntLine(fp);
   *d = readIntLine(fp);
 
-  (*S) = new int[*n];
-  (*P) = new int[*n];
-  (*M) = new int[*n];
+  (*S) = (int*) malloc((*n) * sizeof(int));
+  (*P) = (int*) malloc((*n) * sizeof(int));
+  (*M) = (int*) malloc((*n) * sizeof(int));
 
   for(int i = 0; i < *n; i++){
     (*S)[i] = 0;
@@ -60,7 +58,7 @@ bool loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[
   }
 
   fclose(fp);
-  return true;
+  return 1;
 }
 
 //Funcao auxiliar pra decidir a ordem que as tarefas sao colocadas nas maquinas
@@ -90,7 +88,7 @@ void sorts(int order[], int n, int P[]){
 }
 
 //Cria uma solucao inicial (Ruim)
-bool createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
+int createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
   int nextFree[m]; //Next Free time
   int choosenMachine;
 
@@ -122,10 +120,11 @@ bool createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
   for(int j = 0; j < m; j++)
     freeTime[j] = nextFree[j];
 
+  return 1;
 }
 
 //Cria uma solucao inicial (Boa)
-bool createInitialSolutionG(int n, int m, int d, int S[], int P[], int M[]){
+int createInitialSolutionG(int n, int m, int d, int S[], int P[], int M[]){
   for(int j = 0; j < m; j++)
     freeTime[j] = d;
 
@@ -160,10 +159,10 @@ bool createInitialSolutionG(int n, int m, int d, int S[], int P[], int M[]){
     }
   }
 
-  return true;
+  return 1;
 }
 
-//Retorna o valor da solucao (Executa muito rapido)
+//Retorna o valor da solucao
 int valueOfSolution(int n, int m, int d, int S[], int P[], int M[]){
   int val = 0;
 
@@ -174,11 +173,11 @@ int valueOfSolution(int n, int m, int d, int S[], int P[], int M[]){
 }
 
 //Verifica se uma solucao eh valida
-bool isValid(int n, int m, int d, int S[], int P[], int M[]){
+int isValid(int n, int m, int d, int S[], int P[], int M[]){
   //Nenhuma tarefa termina depois do DeadLine ou comeca antes do tempo = 0
   for(int i = 0; i < n; i++){
     if(S[i] < 0 || S[i] + P[i] > d)
-      return false;
+      return 0;
   }
 
   //Nao ha conflitos
@@ -186,13 +185,13 @@ bool isValid(int n, int m, int d, int S[], int P[], int M[]){
     for(int y = x+1; y < n; y++){
       if(M[x] == M[y]){
         if(!(S[x] + P[x] <= S[y] || S[y] + P[y] <= S[x])){
-          return false;
+          return 0;
         }
       }
     }
   }
 
-  return true;
+  return 1;
 }
 
 void printSolution(int n, int m, int d, int S[], int P[], int M[]){
@@ -213,15 +212,15 @@ void printSolution(int n, int m, int d, int S[], int P[], int M[]){
 
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
 //Pode demorar um tempo consideravel, pois nem todo vizinho eh valido...
-bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], double* delta){
+int generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], double* delta){
   bool cantPlace;
   int p1, p2, aux;
 
   int cT, cM;
 
-  vector<int> sortedMachine;
+  int smSize;
 
-  for(int i = 0; i < m*30; i++){
+  for(int i = 0; i < m*20; i++){
     p1 = rand()%m;
     p2 = rand()%m;
 
@@ -230,7 +229,7 @@ bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], dou
     randomOrder[p2] = aux;
   }
 
-  for(int i = 0; i < n*30; i++){
+  for(int i = 0; i < n*20; i++){
     p1 = rand()%n;
     p2 = rand()%n;
 
@@ -251,11 +250,12 @@ bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], dou
         freeTime[cM] = S[cT]; //freeTime[cM] - P[cT]
 
         //Sorts all Jobs on the removed job machine
-        sortedMachine.clear();
+        smSize = 0;
         for(int k = 0; k < n; k++){
           if(k != cT && M[k] == M[cT]){
-            sortedMachine.push_back(k);
-            p1 = sortedMachine.size() - 1;
+            sortedMachine[smSize] = k;
+            p1 = smSize;
+            smSize++;
             while(p1 > 0 && P[sortedMachine[p1]] < P[sortedMachine[p1-1]]){
               p2 = sortedMachine[p1];
               sortedMachine[p1] = sortedMachine[p1-1];
@@ -266,7 +266,7 @@ bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], dou
         }
 
         freeTime[M[cT]] = d;
-        for(int k = 0; k < sortedMachine.size(); k++){
+        for(int k = 0; k < smSize; k++){
           *delta = *delta + S[sortedMachine[k]];
           S[sortedMachine[k]] = freeTime[M[cT]] - P[sortedMachine[k]];
           *delta = *delta - S[sortedMachine[k]];
@@ -275,11 +275,12 @@ bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], dou
 
         M[cT] = cM;
 
-        sortedMachine.clear();
+        smSize = 0;
         for(int k = 0; k < n; k++){
           if(M[k] == cM){
-            sortedMachine.push_back(k);
-            p1 = sortedMachine.size() - 1;
+            sortedMachine[smSize] = k;
+            p1 = smSize;
+            smSize++;
             while(p1 > 0 && P[sortedMachine[p1]] < P[sortedMachine[p1-1]]){
               p2 = sortedMachine[p1];
               sortedMachine[p1] = sortedMachine[p1-1];
@@ -290,28 +291,28 @@ bool generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], dou
         }
 
         freeTime[cM] = d;
-        for(int k = 0; k < sortedMachine.size(); k++){
+        for(int k = 0; k < smSize; k++){
           *delta = *delta + S[sortedMachine[k]];
           S[sortedMachine[k]] = freeTime[cM] - P[sortedMachine[k]];
           *delta = *delta - S[sortedMachine[k]];
           freeTime[cM] = S[sortedMachine[k]];
         }
 
-        return true;
+        return 1;
       }
     }
   }
-  return false;
+  return 0;
 }
 
 //Aceita um viznho pior aleatoriamente
-bool shouldAccept(double delta, double temperature){
-  double roll = (double) (rand()%10000)/10000.0;
+int shouldAccept(double delta, double temperature){
+  double roll = (double) (rand()%100000)/100000.0;
 
   if(roll < pow(EULER, -(delta/temperature)))
-    return true;
+    return 1;
   else
-    return false;
+    return 0;
 }
 
 //Simulated Annealing
@@ -334,7 +335,7 @@ void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double t
 
   double delta;
 
-  if(decay >= 1.0){
+  if(decay >= 0.99999){
     printf("\nErro! Tentou rodar SA com esfriamento >= 1.0!\n");
     return;
   }
@@ -471,14 +472,17 @@ int main(int argc, char* argv[]){
     return 0;
   }
 
-  freeTime = new int[m];
-  randomOrder = new int[m];
-  randomOrder2 = new int[n];
+  freeTime = (int*) malloc(m * sizeof(int));
+  randomOrder = (int*) malloc(m * sizeof(int));
+  randomOrder2 = (int*) malloc(n * sizeof(int));
+  sortedMachine = (int*) malloc(n * sizeof(int));
 
   for(int i = 0; i < m; i++)
     randomOrder[i] = i;
   for(int i = 0; i < n; i++)
     randomOrder2[i] = i;
+
+  printf("Lido:\nN: %d\nM: %d\nD: %d\n", n, m, d);
 
   //Cria a solucao inicial
   createInitialSolutionG(n, m, d, S, P, M);
@@ -522,12 +526,13 @@ int main(int argc, char* argv[]){
 
   printf("\nResultado salvo em: %s\n", nomeArq);
 
-  delete[] freeTime;
-  delete[] randomOrder;
-  delete[] randomOrder2;
-  delete[] S;
-  delete[] P;
-  delete[] M;
+  free(freeTime);
+  free(randomOrder);
+  free(randomOrder2);
+  free(sortedMachine);
+  free(S);
+  free(P);
+  free(M);
 
   return 0;
 }

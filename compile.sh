@@ -1,1 +1,1 @@
-g++ -o SOLV -O3 SimAnn.cpp
+gcc -o SOLV -O3 SimAnn.c
