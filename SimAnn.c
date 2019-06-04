@@ -449,7 +449,7 @@ int main(int argc, char* argv[]){
   int* S;
   int* M;
 
-  if(argc != 3){
+  if(argc < 3){
     printf("Parametros da linha de comando: ARQUIVO_DE_SAIDA SEED\n");
     return 0;
   }
@@ -488,16 +488,26 @@ int main(int argc, char* argv[]){
   printf("\nSolucao inicial:\n");
   printSolution(n, m, d, S, P, M);
 
-  //Arquivo CSV
+    //Arquivo CSV
   char nomeArq[200];
   strcpy(nomeArq, argv[1]);
-  if(strstr(nomeArq, "."))
+  if(strstr(nomeArq, ".")) {
     strcpy(strstr(nomeArq, "."), ".csv");
-  else
+  }
+  else {
     strcat(nomeArq, ".csv");
+  }
+
+  int temperature = vmax(10, valueOfSolution(n, m, d, S, P, M)/2800);
+  double decay = 0.9;
+  int numberOfNeighbors = vmax(n*25, 50);
+
+  if(argc >= 4) temperature = intFromString(argv[3]);
+  if(argc >= 5) decay = atof(argv[4]);
+  if(argc == 6) numberOfNeighbors = intFromString(argv[5]);
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, vmax(10, valueOfSolution(n, m, d, S, P, M)/2800), 0.9, vmax(n*25, 50), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, temperature, decay, numberOfNeighbors, nomeArq);
 
   //Informa o valor da nova solucao
   if(!isValid(n, m, d, S, P, M)){
