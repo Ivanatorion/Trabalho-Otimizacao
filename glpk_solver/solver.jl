@@ -77,7 +77,7 @@ for inst = insts
 #         print(map(value, M));
 #         print("\n");
 
-        min_elapsed = (now() - start) / (1000 * 60);
+        min_elapsed = (now() - start).value / (1000 * 60);
         print("Time elapsed: " * string(min_elapsed) * " minutes\n");
     end
 end
