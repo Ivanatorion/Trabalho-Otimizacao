@@ -4,4 +4,4 @@ set xlabel 'Iteração'
 set grid
 set term png
 set output 'bpwt_1000_0.png'
-plot 'bpwt_1000_0Solution.csv' with lines notitle
+plot 'result.csv' with lines notitle

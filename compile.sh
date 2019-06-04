@@ -1,1 +1,1 @@
-gcc -o SOLV -O3 SimAnn.c
+gcc -o SOLV -O3 SimAnn.c -lm

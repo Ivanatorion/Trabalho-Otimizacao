@@ -36,16 +36,12 @@ int readIntLine(FILE *fp){
   return intFromString(numLido);
 }
 
-int loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[]){
-
-  FILE *fp = fopen(fileName, "r");
-
-  if(!fp) return 0;
+int loadFile(int *n, int *m, int *d, int **S, int **P, int **M){
 
   //Le m, n e d
-  *m = readIntLine(fp);
-  *n = readIntLine(fp);
-  *d = readIntLine(fp);
+  *m = readIntLine(stdin);
+  *n = readIntLine(stdin);
+  *d = readIntLine(stdin);
 
   (*S) = (int*) malloc((*n) * sizeof(int));
   (*P) = (int*) malloc((*n) * sizeof(int));
@@ -54,10 +50,9 @@ int loadFile(int *n, int *m, int *d, int **S, int **P, int **M,  char fileName[]
   for(int i = 0; i < *n; i++){
     (*S)[i] = 0;
     (*M)[i] = 0;
-    (*P)[i] = readIntLine(fp);
+    (*P)[i] = readIntLine(stdin);
   }
 
-  fclose(fp);
   return 1;
 }
 
@@ -207,13 +202,13 @@ void printSolution(int n, int m, int d, int S[], int P[], int M[]){
 
     printf("}\n");
   }
-  printf("Value: %d\n", valueOfSolution(n, m, d, S, P, M));
+  printf("Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
 }
 
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
 //Pode demorar um tempo consideravel, pois nem todo vizinho eh valido...
 int generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], double* delta){
-  bool cantPlace;
+  int cantPlace;
   int p1, p2, aux;
 
   int cT, cM;
@@ -252,7 +247,7 @@ int generateRamdomNeighboor(int n, int m, int d, int S[], int P[], int M[], doub
         //Sorts all Jobs on the removed job machine
         smSize = 0;
         for(int k = 0; k < n; k++){
-          if(k != cT && M[k] == M[cT]){
+          if(M[k] == M[cT] && k != cT){
             sortedMachine[smSize] = k;
             p1 = smSize;
             smSize++;
@@ -355,7 +350,7 @@ void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double t
 
     count++;
     valueOfSol = valueOfSolution(n, m, d, S, P, M);
-    printf("Temperature: %.2f\nSolution Value: %d\n", temperature, valueOfSol);
+    printf("Temperatura: %.2f\nValor da Solucao: %d\n", temperature, valueOfSol);
     printf("Iteracao: %d/%d\n", count,nItr);
     fprintf(fp, "%d, %d\n", count, valueOfSol);
 
@@ -393,7 +388,7 @@ void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double t
               Mb[i] = M[i];
             }
             valB = valA;
-            printf("New Best! %d\n", valA);
+            printf("Novo Melhor! Valor: %d\n", valA);
         }
       }
       else{
@@ -436,7 +431,7 @@ void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[
 
     fprintf(fp, "}\n");
   }
-  fprintf(fp, "Value: %d\n", valueOfSolution(n, m, d, S, P, M));
+  fprintf(fp, "Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
 
   fclose(fp);
 }
@@ -447,7 +442,7 @@ int vmax(int a, int b){
 
 int main(int argc, char* argv[]){
   //Entradas
-  int n, m, d, initialValue, goodInitValue;
+  int n, m, d, initialValue;
   int* P;
 
   //Saida
@@ -455,7 +450,7 @@ int main(int argc, char* argv[]){
   int* M;
 
   if(argc != 3){
-    printf("Parametros da linha de comando: ARQUIVO_DE_ENTRADA SEED\n");
+    printf("Parametros da linha de comando: ARQUIVO_DE_SAIDA SEED\n");
     return 0;
   }
 
@@ -467,10 +462,7 @@ int main(int argc, char* argv[]){
   srand(seed);
 
   //Le arquivo de entrada
-  if(!loadFile(&n, &m, &d, &S, &P, &M, argv[1])){
-    printf("Nao pode abrir %s\n", argv[1]);
-    return 0;
-  }
+  loadFile(&n, &m, &d, &S, &P, &M);
 
   freeTime = (int*) malloc(m * sizeof(int));
   randomOrder = (int*) malloc(m * sizeof(int));
@@ -482,49 +474,44 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < n; i++)
     randomOrder2[i] = i;
 
-  printf("Lido:\nN: %d\nM: %d\nD: %d\n", n, m, d);
-
   //Cria a solucao inicial
-  createInitialSolutionG(n, m, d, S, P, M);
-  goodInitValue = valueOfSolution(n, m, d, S, P, M);
-
   createInitialSolution(n, m, d, S, P, M);
   initialValue = valueOfSolution(n, m, d, S, P, M);
 
   printf("Seed utilizada: %d\n", seed);
   printf("Criada solucao inicial com valor: %d\n", initialValue);
-  if(isValid(n, m, d, S, P, M))
-    printf("A solucao inicial eh valida\n");
-  else{
+  if(!isValid(n, m, d, S, P, M)){
     printf("ERRO: Solucao inicial invalida!\n");
     return 0;
   }
 
+  printf("\nSolucao inicial:\n");
+  printSolution(n, m, d, S, P, M);
+
   //Arquivo CSV
   char nomeArq[200];
   strcpy(nomeArq, argv[1]);
-  strcpy(strstr(nomeArq, "."), "Solution.csv");
+  if(strstr(nomeArq, "."))
+    strcpy(strstr(nomeArq, "."), ".csv");
+  else
+    strcat(nomeArq, ".csv");
 
   //Roda o simulated annealing
-  simulatedAnnealing(n, m, d, S, P, M, vmax(10, valueOfSolution(n, m, d, S, P, M)/2750), 0.9, vmax(n*25, 50), nomeArq);
+  simulatedAnnealing(n, m, d, S, P, M, vmax(10, valueOfSolution(n, m, d, S, P, M)/2800), 0.9, vmax(n*25, 50), nomeArq);
 
   //Informa o valor da nova solucao
-  printf("Valor inicial bom: %d\n", goodInitValue);
-  printf("Valor inicial: %d\n", initialValue);
-  printf("Novo Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
-  if(isValid(n, m, d, S, P, M))
-    printf("A solucao final eh valida\n");
-  else{
+  if(!isValid(n, m, d, S, P, M)){
     printf("ERRO: Solucao final invalida!\n");
     return 0;
   }
 
-  //Salva a solucao em um arquivo
-  strcpy(nomeArq, argv[1]);
-  strcpy(strstr(nomeArq, "."), "Solution.txt");
-  saveSolution(n, m, d, S, P, M, nomeArq);
+  printf("Solucao Final:\n");
+  printSolution(n, m, d, S, P, M);
 
-  printf("\nResultado salvo em: %s\n", nomeArq);
+  //Salva a solucao em um arquivo
+  saveSolution(n, m, d, S, P, M, argv[1]);
+
+  printf("\nResultado salvo em: %s\n", argv[1]);
 
   free(freeTime);
   free(randomOrder);
