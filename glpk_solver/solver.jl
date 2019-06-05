@@ -55,8 +55,10 @@ for inst = insts
 
         for j = 1:m
             for x = 1:n
-                if M[j,x] == 1
-                    @constraint(mdl, sum(C[x,y] + C[y,x] for y = filter!(e -> (e != x && M[j,e] == 1), 1:n)) <= 1)
+                for y = 1:n
+                    if x != y
+                        @constraint(mdl, M[j,x] + M[j,y] + C[x,y] + C[y,x] <= 3)
+                    end
                 end
             end
         end
