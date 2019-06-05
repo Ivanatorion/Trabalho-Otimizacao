@@ -28,16 +28,17 @@ do
            mkdir Results/${inst}"_t"${t}
            cp instancias/${inst}/plotinst.sh Results/${inst}"_t"${t}/.
            cp instancias/${inst}/${inst}".dat" Results/${inst}"_t"${t}/.
-           cat instancias/${inst}/${inst}.dat | ./${nProg} instancias/${inst}/result.txt 0 ${t} &
-           pids[${i}]=$!
-           i=$((i+1))
+           cat instancias/${inst}/${inst}.dat | ./${nProg} Results/${inst}"_t"${t}/result.txt 22 ${t} &
+#           pids[${i}]=$!
+#           i=$((i+1))
+           wait $!
         done
 	done
 
         #Wait all processes
-	for pid in ${pids[*]}; do
-	   wait ${pid}
-	done
+#	for pid in ${pids[*]}; do
+#	   wait ${pid}
+#	done
 
     for (( j=0; j<4; j++ ))
 	do
