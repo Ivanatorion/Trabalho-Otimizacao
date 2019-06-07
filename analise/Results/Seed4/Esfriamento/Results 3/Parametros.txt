@@ -1,0 +1,5 @@
+Seed: 4
+Temperatura Inicial: 10000
+Esfriamento: 0.85
+Vizinhos por Temperatura: 100
+
