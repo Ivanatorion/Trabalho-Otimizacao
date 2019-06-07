@@ -49,20 +49,22 @@ do
     mv Results.zip $base/Seed$seeda/Esfriamento/Esfriamento$((e+1)).zip
   done
 
+  mkdir $base/Seed$seeda/Temperatura/
   echo "Running with various initial temperatures..."
   #Temperatura inicial
   for (( e=0; e<5; e++ ))
   do
     ./trabalho.sh -q $seeda ${tempInicis[${e}]} $stdEsfriamento $stdVizinhos
-    mv Results.zip $base/Seed$seeda/Esfriamento/Esfriamento$((e+1)).zip
+    mv Results.zip $base/Seed$seeda/Temperatura/Temperatura$((e+1)).zip
   done
 
+  mkdir $base/Seed$seeda/nVizinhos/
   echo "Running with various neighboors per temperature..."
   #Num Vizinhos
   for (( e=0; e<5; e++ ))
   do
     ./trabalho.sh -q $seeda $stdTemp $stdEsfriamento ${numVizinis[${e}]}
-    mv Results.zip $base/Seed$seeda/Esfriamento/Esfriamento$((e+1)).zip
+    mv Results.zip $base/Seed$seeda/nVizinhos/nVizinhos$((e+1)).zip
   done
 
   end_time="$(date -u +%s)"
@@ -87,4 +89,4 @@ echo "Zipped results"
 end_time="$(date -u +%s)"
 elapsed="$(($end_time - $start_time))"
 
-echo "Its finally over! Only took $(($elapsed / 3600)) hours!"
+printf "Its finally over! Only took %02d:%02d:%02d\n" $(($elapsed / 3600)) $(($elapsed % 60)) $(($elapsed - (($elapsed / 60) * 60)))
