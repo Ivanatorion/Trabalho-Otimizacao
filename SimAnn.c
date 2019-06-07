@@ -82,6 +82,46 @@ void sorts(int order[], int n, int P[]){
   }
 }
 
+//Retorna o valor da solucao
+int valueOfSolution(int n, int m, int d, int S[], int P[], int M[]){
+  int val = 0;
+
+  for(int i = 0; i < n; i++)
+    val = val + (d - P[i] - S[i]);
+
+  return val;
+}
+
+//Calcula um "Lower Bound" nao necessariamente factivel para a instancia
+int lowerBound(int n, int m, int d, int S[], int P[], int M[]){
+  for(int j = 0; j < m; j++)
+    freeTime[j] = d;
+
+  int order[n];
+  int rev[n];
+
+  for(int i = 0; i < n; i++)
+    rev[i] = i;
+
+  sorts(rev, n, P);
+  for(int i = 0; i < n; i++)
+    order[i] = rev[n-1-i];
+
+  int k = 0;
+  for(int i = 0; i < n; i++){
+      k = 0;
+      for(int j = 1; j < m; j++){
+        if(freeTime[j] > freeTime[k])
+          k = j;
+      }
+      S[order[i]] = freeTime[k] - P[order[i]];
+      freeTime[k] = freeTime[k] - P[order[i]];
+      M[order[i]] = k;
+  }
+
+  return valueOfSolution(n, m, d, S, P, M);
+}
+
 //Cria uma solucao inicial (Ruim)
 int createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
   int nextFree[m]; //Next Free time
@@ -114,6 +154,17 @@ int createInitialSolution(int n, int m, int d, int S[], int P[], int M[]){
 
   for(int j = 0; j < m; j++)
     freeTime[j] = nextFree[j];
+
+  int tim;
+  for(int j = 0; j < m; j++){
+    tim = d;
+    for(int i = n-1; i >= 0; i--){
+      if(M[order[i]] == j){
+        S[order[i]] = tim - P[order[i]];
+        tim = tim - P[order[i]];
+      }
+    }
+  }
 
   return 1;
 }
@@ -157,16 +208,6 @@ int createInitialSolutionG(int n, int m, int d, int S[], int P[], int M[]){
   return 1;
 }
 
-//Retorna o valor da solucao
-int valueOfSolution(int n, int m, int d, int S[], int P[], int M[]){
-  int val = 0;
-
-  for(int i = 0; i < n; i++)
-    val = val + (d - P[i] - S[i]);
-
-  return val;
-}
-
 //Verifica se uma solucao eh valida
 int isValid(int n, int m, int d, int S[], int P[], int M[]){
   //Nenhuma tarefa termina depois do DeadLine ou comeca antes do tempo = 0
@@ -189,7 +230,9 @@ int isValid(int n, int m, int d, int S[], int P[], int M[]){
   return 1;
 }
 
-void printSolution(int n, int m, int d, int S[], int P[], int M[]){
+void printSolution(int n, int m, int d, int S[], int P[], int M[], int initialValue, int lowerBoundS){
+  int val = valueOfSolution(n, m, d, S, P, M);
+
   for(int i = 0; i < n; i++)
     printf("S[%d]: %d\n", i, S[i]);
 
@@ -202,7 +245,13 @@ void printSolution(int n, int m, int d, int S[], int P[], int M[]){
 
     printf("}\n");
   }
-  printf("Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
+  printf("Valor: %d\n", val);
+
+  printf("\nValor inicial: %d\nLower Bound: %d", initialValue, lowerBoundS);
+  printf("\n\nPercentual do Lower Bound: %.2f", (val*100.0)/lowerBoundS);
+  if(val == lowerBoundS)
+    printf(" (Otimo!)");
+  printf("\nDesvio Percentual: %.2f\n", (100.0*(initialValue-val))/initialValue);
 }
 
 //Tenta gerar uma solucao vizinha valida, retorna "true" se conseguir ou "false" se nao conseguir (Se funcionar, ela nunca retorna false...)
@@ -416,7 +465,9 @@ void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double t
 }
 
 //Salva a solucao resultado em um arquivo
-void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[]){
+void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[], int initialValue, int lowerBoundS){
+  int val = valueOfSolution(n, m, d, S, P, M);
+
   FILE *fp = fopen(fileName, "w");
 
   for(int i = 0; i < n; i++)
@@ -431,7 +482,13 @@ void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[
 
     fprintf(fp, "}\n");
   }
-  fprintf(fp, "Valor: %d\n", valueOfSolution(n, m, d, S, P, M));
+  fprintf(fp, "Valor: %d\n", val);
+
+  fprintf(fp, "\nValor inicial: %d\nLower Bound: %d", initialValue, lowerBoundS);
+  fprintf(fp, "\n\nPercentual do Lower Bound: %.2f", (val*100.0)/lowerBoundS);
+  if(val == lowerBoundS)
+    fprintf(fp, " (Otimo!)");
+  fprintf(fp, "\nDesvio Percentual: %.2f\n", (100.0*(initialValue-val))/initialValue);
 
   fclose(fp);
 }
@@ -442,7 +499,7 @@ int vmax(int a, int b){
 
 int main(int argc, char* argv[]){
   //Entradas
-  int n, m, d, initialValue;
+  int n, m, d, initialValue, lowerBoundS;
   int* P;
 
   //Saida
@@ -474,6 +531,8 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < n; i++)
     randomOrder2[i] = i;
 
+  lowerBoundS = lowerBound(n, m, d, S, P, M);
+
   //Cria a solucao inicial
   createInitialSolution(n, m, d, S, P, M);
   initialValue = valueOfSolution(n, m, d, S, P, M);
@@ -486,7 +545,7 @@ int main(int argc, char* argv[]){
   }
 
   printf("\nSolucao inicial:\n");
-  printSolution(n, m, d, S, P, M);
+  printSolution(n, m, d, S, P, M, initialValue, lowerBoundS);
 
     //Arquivo CSV
   char nomeArq[200];
@@ -516,10 +575,10 @@ int main(int argc, char* argv[]){
   }
 
   printf("Solucao Final:\n");
-  printSolution(n, m, d, S, P, M);
+  printSolution(n, m, d, S, P, M, initialValue, lowerBoundS);
 
   //Salva a solucao em um arquivo
-  saveSolution(n, m, d, S, P, M, argv[1]);
+  saveSolution(n, m, d, S, P, M, argv[1], initialValue, lowerBoundS);
 
   printf("\nResultado salvo em: %s\n", argv[1]);
 
