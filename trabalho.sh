@@ -1,6 +1,6 @@
 insts=('bpwt_500_' 'bpwt_1000_' 'bpwt_2000_')
 nProg='SOLV'
-paramsUsed=('200' '10000' '0.9' '100')
+paramsUsed=($2 $3 $4 $5)
 
 if [ ! -f $nProg ]; then
   echo $nProg" nao encontrado!"
@@ -62,7 +62,9 @@ rm -rf Results
 
 echo "Done!"
 
-#Beep
-( speaker-test -t sine -f 1000 > /dev/null )& pid=$! ; sleep 1.5s ; kill -9 $pid
+if [ $1 != "-q" ]; then
+  #Beep
+  ( speaker-test -t sine -f 1000 > /dev/null )& pid=$! ; sleep 1.5s ; kill -9 $pid
+fi
 
 fi
