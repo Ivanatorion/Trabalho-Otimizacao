@@ -42,8 +42,6 @@ for instance_folder in instances:
     stop = datetime(year, month, day, hour, minute, second)
 
     minutes_elapsed = (max([start, stop]) - min([start, stop])).total_seconds() / 60
-    print(executable_cmd)
+
     with open(os.path.join(instance_folder, 'result.txt'), 'a') as result:
         result.write('Time elapsed (in minutes): {}'.format(minutes_elapsed))
-
-    exit()
