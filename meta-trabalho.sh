@@ -2,9 +2,9 @@ base="ResultadosOtimizacao"
 
 seeds=('4' '8' '15' '16' '23')
 
-tempInicis=('20000' '10000' '5000' '1000' '200') 
-esfriamentos=('0.95' '0.9' '0.85' '0.8' '0.75')
-numVizinis=('1000' '500' '100' '50' '10')
+tempInicis=('50' '100' '200' '400' '800' '1600' '3200' '6400' '12800' '25600')
+esfriamentos=('0.5' '0.55' '0.6' '0.65' '0.7' '0.75' '0.8' '0.85' '0.9' '0.95')
+numVizinis=('10' '20' '40' '80' '160' '320' '640' '1280' '2560' '5120')
 
 stdTemp='10000'
 stdEsfriamento='0.9'
@@ -43,7 +43,7 @@ do
 
   echo "Running with various decay values..."
   #Esfriamento
-  for (( e=0; e<5; e++ ))
+  for (( e=0; e<10; e++ ))
   do
     ./trabalho.sh -q $seeda $stdTemp ${esfriamentos[${e}]} $stdVizinhos
     mv Results.zip $base/Seed$seeda/Esfriamento/Esfriamento$((e+1)).zip
@@ -52,7 +52,7 @@ do
   mkdir $base/Seed$seeda/Temperatura/
   echo "Running with various initial temperatures..."
   #Temperatura inicial
-  for (( e=0; e<5; e++ ))
+  for (( e=0; e<10; e++ ))
   do
     ./trabalho.sh -q $seeda ${tempInicis[${e}]} $stdEsfriamento $stdVizinhos
     mv Results.zip $base/Seed$seeda/Temperatura/Temperatura$((e+1)).zip
@@ -61,7 +61,7 @@ do
   mkdir $base/Seed$seeda/nVizinhos/
   echo "Running with various neighboors per temperature..."
   #Num Vizinhos
-  for (( e=0; e<5; e++ ))
+  for (( e=0; e<10; e++ ))
   do
     ./trabalho.sh -q $seeda $stdTemp $stdEsfriamento ${numVizinis[${e}]}
     mv Results.zip $base/Seed$seeda/nVizinhos/nVizinhos$((e+1)).zip
