@@ -39,8 +39,8 @@ do
   echo "Running Simulations with Seed: "$seeda" ("$((k+1))"/5)"
 
   mkdir $base/Seed$seeda
-  mkdir $base/Seed$seeda/Esfriamento/
 
+  mkdir $base/Seed$seeda/Esfriamento/
   echo "Running with various decay values..."
   #Esfriamento
   for (( e=0; e<10; e++ ))
