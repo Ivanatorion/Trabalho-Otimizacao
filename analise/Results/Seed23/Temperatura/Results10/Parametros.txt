@@ -1,0 +1,5 @@
+Seed: 23
+Temperatura Inicial: 25600
+Esfriamento: 0.9
+Vizinhos por Temperatura: 100
+

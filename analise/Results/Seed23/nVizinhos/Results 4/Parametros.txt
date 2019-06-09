@@ -1,5 +1,0 @@
-Seed: 23
-Temperatura Inicial: 10000
-Esfriamento: 0.9
-Vizinhos por Temperatura: 50
-

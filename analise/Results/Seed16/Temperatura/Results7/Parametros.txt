@@ -1,0 +1,5 @@
+Seed: 16
+Temperatura Inicial: 3200
+Esfriamento: 0.9
+Vizinhos por Temperatura: 100
+
