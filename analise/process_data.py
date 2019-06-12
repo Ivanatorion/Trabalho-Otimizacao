@@ -4,6 +4,7 @@ import os
 
 parameters = ['Esfriamento', 'nVizinhos', 'Temperatura']
 seeds = glob('Results/*')
+best_values = {}
 
 for parameter in parameters:
     data = None
@@ -39,9 +40,16 @@ for parameter in parameters:
                     params['Valor'] = int(value_line)
                     params['Tempo'] = float(time_elapsed_line[-1].strip().replace('\n', ''))
 
+                best_values.setdefault(instance_name, params['Valor'])
+                if params['Valor'] < best_values[instance_name]:
+                    best_values[instance_name] = params['Valor']
+
                 if data is None:
                     data = DataFrame(data=params, index=[0])
                 else:
                     data = data.append(params, ignore_index=True)
 
     data.to_csv('Data/{}.csv'.format(parameter), index=False)
+
+data = DataFrame({'Instancia': list(best_values.keys()), 'Melhor valor': list(best_values.values())})
+data.to_csv('Data/bestValues.csv', index=False)

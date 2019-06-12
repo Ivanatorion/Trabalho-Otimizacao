@@ -13,8 +13,6 @@ header_map = {'Esfriamento': 'Esfriamento',
               'nVizinhos': 'Vizinhos por Temperatura',
               'Temperatura': 'Temperatura Inicial'}
 
-lower_bounds = {'bpwt_500_3': 141300, 'bpwt_1000_3': 285190, 'bpwt_2000_3': 578240}
-
 column_time = 'Tempo'
 column_value = 'Valor'
 
@@ -22,11 +20,24 @@ font_size = 18
 
 data_files = glob(path.join(data_path, '*.csv'))
 
+best_values = {}
+with open(path.join(data_path, 'bestValues.csv')) as file:
+    header = file.readline()
+    for line in file:
+        content = line.split(',')
+        best_values[content[0]] = int(content[1])
+
+instances = list(best_values.keys())
+
 for data_file in data_files:
     param_name = data_file.split('/')[-1][:-4]
-    column_name = header_map[param_name]
 
-    for inst in lower_bounds.keys():
+    if param_name in header_map:
+        column_name = header_map[param_name]
+    else:
+        continue
+
+    for inst in instances:
         data = read_csv(data_file, header=[0], index_col=None)
 
         seeds = data.loc[:, 'Seed'].values
@@ -39,7 +50,7 @@ for data_file in data_files:
 
         data = data.sort_values(by=column_name)
 
-        min_value = lower_bounds[inst]
+        min_value = best_values[inst]
         max_value = data.loc[:, column_value].max()
 
         data.loc[:, column_value] = (data.loc[:, column_value] - min_value) / (max_value - min_value)

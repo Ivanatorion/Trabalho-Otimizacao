@@ -1421,4 +1421,4 @@ Lower Bound: 289310
 
 Percentual do Lower Bound: 108.42
 Desvio Percentual: 20.37
-Time elapsed (in minutes): 0.015073583333333333
+Time elapsed (in seconds): 1
