@@ -34,7 +34,7 @@ for parameter in parameters:
 
                     content = content.split('Valor: ')
                     value_line = content[1].split('\n')[0]
-                    time_elapsed_line = content[1].split('Time elapsed (in minutes):')
+                    time_elapsed_line = content[1].split('Time elapsed (in seconds):')
 
                     params['Valor'] = int(value_line)
                     params['Tempo'] = float(time_elapsed_line[-1].strip().replace('\n', ''))

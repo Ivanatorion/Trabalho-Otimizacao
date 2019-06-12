@@ -465,7 +465,7 @@ void simulatedAnnealing(int n, int m, int d, int S[], int P[], int M[], double t
 }
 
 //Salva a solucao resultado em um arquivo
-void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[], int initialValue, int lowerBoundS){
+void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[], int initialValue, int lowerBoundS, time_t time_elapsed){
   int val = valueOfSolution(n, m, d, S, P, M);
 
   FILE *fp = fopen(fileName, "w");
@@ -486,9 +486,12 @@ void saveSolution(int n, int m, int d, int S[], int P[], int M[], char fileName[
 
   fprintf(fp, "\nValor inicial: %d\nLower Bound: %d", initialValue, lowerBoundS);
   fprintf(fp, "\n\nPercentual do Lower Bound: %.2f", (val*100.0)/lowerBoundS);
+
   if(val == lowerBoundS)
     fprintf(fp, " (Otimo!)");
-  fprintf(fp, "\nDesvio Percentual: %.2f\n", (100.0*(initialValue-val))/initialValue);
+
+  fprintf(fp, "\nDesvio Percentual: %.2f", (100.0*(initialValue-val))/initialValue);
+  fprintf(fp, "\nTime elapsed (in seconds): %ld\n", time_elapsed);
 
   fclose(fp);
 }
@@ -498,6 +501,8 @@ int vmax(int a, int b){
 }
 
 int main(int argc, char* argv[]){
+  time_t start = time(0);
+
   //Entradas
   int n, m, d, initialValue, lowerBoundS;
   int* P;
@@ -578,7 +583,8 @@ int main(int argc, char* argv[]){
   printSolution(n, m, d, S, P, M, initialValue, lowerBoundS);
 
   //Salva a solucao em um arquivo
-  saveSolution(n, m, d, S, P, M, argv[1], initialValue, lowerBoundS);
+  time_t stop = time(0);
+  saveSolution(n, m, d, S, P, M, argv[1], initialValue, lowerBoundS, stop - start);
 
   printf("\nResultado salvo em: %s\n", argv[1]);
 
