@@ -8,10 +8,7 @@ insts = ["bpwt_500_" "bpwt_1000_" "bpwt_2000_"];
 for inst = insts
     for id = 0:3
 
-        start = now();
-        print("Time started: " * string(start) * "\n");
-
-        mdl = Model(with_optimizer(GLPK.Optimizer, tm_lim=1));
+        mdl = Model();
 
         # Le dados do arquivo de entrada
         filename = inst * string(id);
@@ -61,15 +58,23 @@ for inst = insts
 
         @objective(mdl, Min, sum((d - (S[i] + P[i])) for i = 1: n));
 
-#         print(mdl);
-
         print("Solving... ");
-        t = optimize!(mdl);
+        start = now();
+
+        optimize!(mdl, with_optimizer(GLPK.Optimizer, tm_lim=1800000)); # 1800000 ms = 30 minutes
+
+        min_elapsed = (now() - start).value / 1000;
         print("Done.\n");
 
-        print("Value for $filename: ");
-        print(objective_value(mdl));
-        print("\n");
+        out = open("result.txt", append=true);
+
+        write(out, "Value for $filename: ");
+        write(out, string(objective_value(mdl)));
+        write(out, "\n");
+
+        write(out, "Termination status: ");
+        write(out, string(termination_status(mdl)));
+        write(out, "\n");
 
 #         print("S:\n");
 #         print(map(value, S));
@@ -78,7 +83,7 @@ for inst = insts
 #         print(map(value, M));
 #         print("\n");
 
-        min_elapsed = (now() - start).value / (1000 * 60);
-        print("Time elapsed: " * string(min_elapsed) * " minutes\n\n");
+        write(out, "Time elapsed: " * string(min_elapsed) * " seconds\n\n");
+        close(out)
     end
 end
