@@ -11,14 +11,14 @@ for inst = insts
         start = now();
         print("Time started: " * string(start) * "\n");
 
-        mdl = Model(with_optimizer(GLPK.Optimizer));
+        mdl = Model(with_optimizer(GLPK.Optimizer, tm_lim=1));
 
         # Le dados do arquivo de entrada
         filename = inst * string(id);
         filepath = inst_path * filename * "/" * filename * ".dat";
         f = open(filepath);
 
-        print("Running $filename...\n");
+        print("Running $filename... ");
 
         m = parse(Int32, readline(f));  # Numero de maquinas
         n = parse(Int32, readline(f));  # Numero de tarefas
@@ -46,18 +46,14 @@ for inst = insts
         for j = 1:m
             for x = 1:n
                 for y = 1:n
-                    if x != y && M[j,x] == 1 && M[j,y] == 1
-                        @constraint(mdl, (1 / d) *  ((S[x] + P[x]) - S[y]) >= C[x,y])
-                    end
-                end
-            end
-        end
-
-        for j = 1:m
-            for x = 1:n
-                for y = 1:n
                     if x != y
+
+                        if M[j,x] == 1 && M[j,y] == 1
+                            @constraint(mdl, (1 / d) *  ((S[x] + P[x]) - S[y]) >= C[x,y])
+                        end
+
                         @constraint(mdl, M[j,x] + M[j,y] + C[x,y] + C[y,x] <= 3)
+
                     end
                 end
             end
@@ -67,11 +63,14 @@ for inst = insts
 
 #         print(mdl);
 
-        optimize!(mdl);
+        print("Solving... ");
+        t = optimize!(mdl);
+        print("Done.\n");
 
         print("Value for $filename: ");
         print(objective_value(mdl));
         print("\n");
+
 #         print("S:\n");
 #         print(map(value, S));
 #         print("\n");
@@ -80,6 +79,6 @@ for inst = insts
 #         print("\n");
 
         min_elapsed = (now() - start).value / (1000 * 60);
-        print("Time elapsed: " * string(min_elapsed) * " minutes\n");
+        print("Time elapsed: " * string(min_elapsed) * " minutes\n\n");
     end
 end
