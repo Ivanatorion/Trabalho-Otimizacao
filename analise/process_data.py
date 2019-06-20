@@ -5,6 +5,22 @@ import os
 parameters = ['Esfriamento', 'nVizinhos', 'Temperatura']
 seeds = glob('Results/*')
 best_values = {}
+lower_bounds = {}
+
+bkvs = {'bpwt_500_0': 164690,
+        'bpwt_500_1': 167180,
+        'bpwt_500_2': 164870,
+        'bpwt_500_3': 161470,
+        'bpwt_1000_0': 334780,
+        'bpwt_1000_1': 326570,
+        'bpwt_1000_2': 332040,
+        'bpwt_1000_3': 322320,
+        'bpwt_2000_0': 662860,
+        'bpwt_2000_1': 656780,
+        'bpwt_2000_2': 657990,
+        'bpwt_2000_3': 658140}
+
+bkvs_df = DataFrame(list(bkvs.values()), index=bkvs.keys(), columns=['BKV'])
 
 for parameter in parameters:
     data = None
@@ -33,14 +49,17 @@ for parameter in parameters:
                     content = result.readlines()
                     content = ''.join(content)
 
-                    content = content.split('Valor: ')
-                    value_line = content[1].split('\n')[0]
-                    time_elapsed_line = content[1].split('Time elapsed (in seconds):')
+                    value_line = content.split('Valor: ')[1].split('\n')[0]
+                    lower_bound_line = content.split('Lower Bound: ')[1].split('\n')[0]
+                    time_elapsed_line = content.split('Time elapsed (in seconds): ')[1].split('\n')[0]
 
                     params['Valor'] = int(value_line)
-                    params['Tempo'] = float(time_elapsed_line[-1].strip().replace('\n', ''))
+                    params['Lower Bound'] = int(lower_bound_line)
+                    params['Tempo'] = float(time_elapsed_line)
 
+                lower_bounds.setdefault(instance_name, params['Lower Bound'])
                 best_values.setdefault(instance_name, params['Valor'])
+
                 if params['Valor'] < best_values[instance_name]:
                     best_values[instance_name] = params['Valor']
 
@@ -51,5 +70,9 @@ for parameter in parameters:
 
     data.to_csv('Data/{}.csv'.format(parameter), index=False)
 
-data = DataFrame({'Instancia': list(best_values.keys()), 'Melhor valor': list(best_values.values())})
+data = DataFrame({'Instancia': list(best_values.keys()),
+                  'Melhor valor': list(best_values.values()),
+                  'Lower Bound': list(lower_bounds.values())}, index=list(best_values.keys()))
+
+data = data.join(bkvs_df)
 data.to_csv('Data/bestValues.csv', index=False)
